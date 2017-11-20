@@ -186,11 +186,13 @@ void eval(char *cmdline)
 		if (!bg) {
 			int status;
 			addjob(jobs, pid, FG, cmdline);
+			//waitpid(pid, &status, 0);
 			if (waitpid(pid, &status, 0) < 0)
-				unix_error("waitfg: waitpid error:");
+			unix_error("waitfg: waitpid error:");
+			deletejob(jobs, pid);
 		} else {
 			addjob(jobs, pid, BG, cmdline);
-			printf("%d %s", pid2jid(pid), cmdline);	
+			printf("(%d) (%d) %s", pid2jid(pid), pid, cmdline);	
 		}
 	}
 
@@ -203,6 +205,10 @@ int builtin_cmd(char **argv)
 
 	if (!strcmp(cmd, "quit")) {
 		exit(0);
+	}
+	if(!strcmp(cmd, "jobs")) {
+		listjobs(jobs, 1);
+		return 1;
 	}
 
 	return 0;
