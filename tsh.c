@@ -171,8 +171,9 @@ void eval(char *cmdline)
 {
 	char *argv[MAXARGS];
 	pid_t pid;
+	int bg;
 
-	parseline(cmdline, argv);
+	bg = parseline(cmdline, argv);
 
 	if (!builtin_cmd(argv)) {
 		if ((pid=fork()) == 0) {
@@ -180,6 +181,16 @@ void eval(char *cmdline)
 				printf("%s: Command not found.\n", argv[0]);
 				exit(0);
 			}
+		}
+
+		if (!bg) {
+			int status;
+			addjob(jobs, pid, FG, cmdline);
+			if (waitpid(pid, &status, 0) < 0)
+				unix_error("waitfg: waitpid error:");
+		} else {
+			addjob(jobs, pid, BG, cmdline);
+			printf("%d %s", pid2jid(pid), cmdline);	
 		}
 	}
 
