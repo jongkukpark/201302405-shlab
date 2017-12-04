@@ -262,6 +262,10 @@ void sigchld_handler(int sig)
 			printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
 			deletejob(jobs, pid);
 		}
+		else if (WIFSTOPPED(status)) {
+			printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, WSTOPSIG(status));
+			jobs[pid2jid(pid)-1].state = ST;
+		}
 		else if (WIFEXITED(status)) {
 			deletejob(jobs, pid);
 		}
@@ -278,7 +282,7 @@ void sigint_handler(int sig)
 {
 	pid_t sigint;
 	sigint = fgpid(jobs);
-	kill(-sigint, sig);
+	kill(sigint, sig);
 	return;
 }
 
