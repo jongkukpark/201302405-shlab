@@ -172,26 +172,32 @@ void eval(char *cmdline)
 	char *argv[MAXARGS];
 	pid_t pid;
 	int bg;
+	sigset_t mask;
 
 	bg = parseline(cmdline, argv);
 
 	if (!builtin_cmd(argv)) {
+		sigemptyset(&mask);
+		sigaddset(&mask,SIGCHLD);
+		sigaddset(&mask,SIGINT);
+		sigprocmask(SIG_BLOCK, &mask, NULL);
+		
 		if ((pid=fork()) == 0) {
+			setpgid(0, 0);
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			if (execve(argv[0], argv, environ) < 0) {
 				printf("%s: Command not found.\n", argv[0]);
 				exit(0);
 			}
 		}
 
+		addjob(jobs, pid, (bg==1?BG:FG), cmdline);
+		sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
 		if (!bg) {
-			int status;
-			addjob(jobs, pid, FG, cmdline);
-			//waitpid(pid, &status, 0);
-			if (waitpid(pid, &status, 0) < 0)
-			unix_error("waitfg: waitpid error:");
-			deletejob(jobs, pid);
-		} else {
-			addjob(jobs, pid, BG, cmdline);
+			waitfg(pid, 1);
+		} 
+		else {
 			printf("(%d) (%d) %s", pid2jid(pid), pid, cmdline);	
 		}
 	}
@@ -216,6 +222,22 @@ int builtin_cmd(char **argv)
 
 void waitfg(pid_t pid, int output_fd)
 {
+	struct job_t *j = getjobpid(jobs, pid);
+	char buf[MAXLINE];
+
+	if(!j) return;
+
+	while (j->pid == pid && j->state == FG)
+		sleep(1);
+	if (verbose) {
+		memset(buf, '\0', MAXLINE);
+		sprintf(buf, "waitfg : Process (%d) no longer the fg process:\n", pid);
+		if (write(output_fd, buf, strlen(buf))<0) {
+			fprintf(stderr, "Error writing to file\n");
+			exit(1);
+		}
+	}
+
 	return;
 }
 
@@ -230,8 +252,20 @@ void waitfg(pid_t pid, int output_fd)
  *     available zombie children, but doesn't wait for any other
  *     currently running children to terminate.  
  */
-void sigchld_handler(int sig) 
-{
+void sigchld_handler(int sig)
+{	
+	pid_t pid;
+	int status;
+
+	while((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
+		if(WIFSIGNALED(status)) {
+			printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
+			deletejob(jobs, pid);
+		}
+		else if (WIFEXITED(status)) {
+			deletejob(jobs, pid);
+		}
+	}
 	return;
 }
 
@@ -242,7 +276,9 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-	kill(, sig);
+	pid_t sigint;
+	sigint = fgpid(jobs);
+	kill(-sigint, sig);
 	return;
 }
 
@@ -253,6 +289,9 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+	pid_t sigtstp;
+	sigtstp = fgpid(jobs);
+	kill(sigtstp,sig);
 	return;
 }
 
