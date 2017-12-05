@@ -216,6 +216,18 @@ int builtin_cmd(char **argv)
 		listjobs(jobs, 1);
 		return 1;
 	}
+	if (!strcmp(cmd, "bg") || !strcmp(cmd, "fg")) {
+		char *s = argv[1];
+		int jobpid = s[1] - '0';
+		struct job_t *k = getjobjid(jobs, jobpid);
+		pid_t pid = k->pid;
+		if (!strcmp(cmd, "bg")) {
+			k->state = BG;
+			printf("[%d] (%d) %s", jobpid, pid, k->cmdline);
+			kill(pid, SIGCONT);
+		}
+		return 1;
+	}
 
 	return 0;
 }
