@@ -183,7 +183,8 @@ void eval(char *cmdline)
 		sigaddset(&mask,SIGTSTP);
 		sigprocmask(SIG_BLOCK, &mask, NULL);
 		
-		if ((pid=fork()) == 0) {
+		pid = fork();
+		if (pid == 0) {
 			setpgid(0, 0);
 			sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			if (execve(argv[0], argv, environ) < 0) {
@@ -191,6 +192,9 @@ void eval(char *cmdline)
 				exit(0);
 			}
 		}
+
+		if (pid < 0) 
+			unix_error("fork error");
 
 		addjob(jobs, pid, (bg==1?BG:FG), cmdline);
 		sigprocmask(SIG_UNBLOCK, &mask, NULL);
