@@ -227,6 +227,10 @@ int builtin_cmd(char **argv)
 			printf("[%d] (%d) %s", jobpid, pid, k->cmdline);
 			kill(pid, SIGCONT);
 		}
+		else {
+			k->state = FG;
+			kill(pid, SIGCONT);
+		}
 		return 1;
 	}
 
