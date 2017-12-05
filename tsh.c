@@ -225,11 +225,11 @@ int builtin_cmd(char **argv)
 		if (!strcmp(cmd, "bg")) {
 			k->state = BG;
 			printf("[%d] (%d) %s", jobpid, pid, k->cmdline);
-			kill(pid, SIGCONT);
+			kill(-pid, SIGCONT);
 		}
 		else {
 			k->state = FG;
-			kill(pid, SIGCONT);
+			kill(-pid, SIGCONT);
 		}
 		return 1;
 	}
@@ -299,7 +299,7 @@ void sigint_handler(int sig)
 {
 	pid_t sigint;
 	sigint = fgpid(jobs);
-	kill(sigint, sig);
+	kill(-sigint, sig);
 	return;
 }
 
@@ -312,7 +312,7 @@ void sigtstp_handler(int sig)
 {
 	pid_t sigtstp;
 	sigtstp = fgpid(jobs);
-	kill(sigtstp,sig);
+	kill(-sigtstp,sig);
 	return;
 }
 
