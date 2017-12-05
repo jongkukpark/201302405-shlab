@@ -180,6 +180,7 @@ void eval(char *cmdline)
 		sigemptyset(&mask);
 		sigaddset(&mask,SIGCHLD);
 		sigaddset(&mask,SIGINT);
+		sigaddset(&mask,SIGTSTP);
 		sigprocmask(SIG_BLOCK, &mask, NULL);
 		
 		if ((pid=fork()) == 0) {
